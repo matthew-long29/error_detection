@@ -49,6 +49,7 @@ module error_rx #(parameter[15:0] crc_polynomial,
             crc_val <= init;
             rx_crc <= 16'd0;
         end else begin
+            //upon startup, initiate the values, needed to delay the start of the operation by 1 clock cycle
             if (data_valid) begin
                 crc_val <= init; 
                 bit_counter <= 7'd0;
