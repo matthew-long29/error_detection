@@ -21,44 +21,83 @@
 
 
 module tb_error_detection;
-    logic CLK_DATA;
+
+
+    logic CLK_DATA; //10MHz
     logic reset;
     logic data_in;
     logic data_valid;
     wire packet_done;
     wire error;
-    logic first_bit;
-    logic [63:0] data;
-    error_rx #(16'h1021, 16'h0000) dut (.clk_data(CLK_DATA), .reset(reset), .data_in(data_in), .data_valid(data_valid), .packet_done(packet_done), .error(error));
-    
+
+    error_rx dut (CLK_DATA, reset, data_in, data_valid, packet_done, error);
     initial CLK_DATA = 0;
-    always #500 CLK_DATA = ~CLK_DATA;
+    always #0.050 CLK_DATA = ~CLK_DATA;
+    
+    
+    
+    logic [95:0] packets [0:9999];
+    logic expected_error [0:9999];
+    logic expected_current;
+    initial begin
+        $readmemh("packets.data", packets);
+        $readmemb("expected_results.data", expected_error);
+    end
+    
     initial begin
         reset = 1;
-        first_bit = 0;
-        #1500
-        reset = 0;
+        data_valid = 0;
         
-        data = 64'hA3F72C8B4E6196D9; //correct code sent (crc last 2 bytes calculated using online calculator)
+
+        @(posedge CLK_DATA);
         
-        for (int i = 63; i >= 0; i--) begin
-            @(posedge CLK_DATA);
-                data_in = data[i];
-                if (!first_bit) begin
-                    data_valid = 1; //makes data_valid only pulse for first clock cycle showing start of data transmission
-                    first_bit = 1;
-                end else
-                    data_valid = 0;
+        reset <= 0;
+        
+        for (int pkt = 0; pkt < 10000; pkt++) begin
+
+            
+
+            for (int i = 95; i >= 0; i--) begin
+                @(posedge CLK_DATA);
+                expected_current <= expected_error[pkt];
+                data_valid <= 1;
+                data_in <= packets[pkt][i];
+            end
+
+        @(posedge packet_done);
+        
         end
         
-        //inject two errors into first 6 bytes (a 4 goes to 6 and a 1 goes to 0, total 2 bit errors)
-        data = 64'hA3F72C8B6E6096D9;
-        for (int i = 63; i >= 0; i--) begin
-            @(posedge CLK_DATA);
-                data_in = data[i];
-               
-        end
-        
-                
-       end
+        $finish;
+    end
+    
+    //SVA Check
+  
+    integer pass_count = 0;
+    integer false_error = 0;
+    integer missed_error = 0;
+   
+    
+    property check_crc;
+        @(posedge CLK_DATA)
+        packet_done |-> (error == expected_current);
+    endproperty
+    
+    error_test: assert property (check_crc)
+    begin
+        pass_count++; 
+    end else begin
+        if (expected_current == 0 && error == 1)
+            false_error++;
+        else if (expected_current == 1 && error == 0)
+            missed_error++;
+    end
+ 
+    
+    
+    final begin
+        $display("Packets Correct : %0d", pass_count);
+        $display("False Detect : %0d", false_error);
+        $display("Missed error: %0d", missed_error);
+    end
 endmodule
