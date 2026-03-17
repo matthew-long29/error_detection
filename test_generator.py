@@ -1,45 +1,45 @@
 import random
+import crcmod
 
-NUM_PACKETS = 10000
+NUM_PACKETS = 100000
 PAYLOAD_SIZE = 10
-ERROR_RATE = 0.1
+PACKET_BITS = (PAYLOAD_SIZE + 2) * 8
 
-POLYNOMIAL = 0x1021
-INIT = 0x000
-def crc16(data):
-    crc = INIT
-    for byte in data:
-        crc ^= (byte << 8)
+ERROR_RATE = 0.1 #Actually 1e-3, add higher rate to test more errors 
+NUM_ERRORS = 3 #Vary the max number of errors per packet
 
-        for _ in range(8):
-            if crc & 0x8000:
-                crc = ((crc << 1) ^ POLYNOMIAL) & 0xFFFF
-            else:
-                crc = (crc << 1) & 0xFFFF
+POLYNOMIAL = 0x11021 #CRCmod requires explicity x^16 term, which is why polynomial is 0x11021 instead of 0x1021
+INIT = 0x0000
 
-    return crc
+crc16 = crcmod.mkCrcFun(POLYNOMIAL, rev=False, initCrc=INIT, xorOut=0x0000)
 
+with open("packets.data", "w") as f, open("expected_results.data", "w") as f2:
 
-with open ("packets.data", "w") as f, open("expected_results.data", 'w') as f2:
+    for _ in range(NUM_PACKETS):
 
-    for i in range (NUM_PACKETS):
-        payload = [random.randint(0,255) for j in range(PAYLOAD_SIZE)]
-        crc = crc16(bytes(payload))
+        payload = bytes(random.randint(0,255) for _ in range(PAYLOAD_SIZE))
 
-        crc_h = (crc >> 8) & 0xFF #Get upper byte
-        crc_l = crc & 0xFF #Get lower byte
+        payload_int = int.from_bytes(payload, 'big')
+        crc_val = crc16(payload)
 
-        packet = payload + [crc_h, crc_l]
+        packet = (payload_int << 16) | crc_val
 
-        #Randomly inject error
         if random.random() < ERROR_RATE:
-            byte_index = random.randint(0, len(packet) - 1)
-            bit = 1 << random.randint(0, 7)
-            packet[byte_index] ^= bit
+
             f2.write("1\n")
+
+            flipped_index = []
+            for _ in range(NUM_ERRORS):
+                bit_index = random.randint(0, PACKET_BITS - 1)
+                while (bit_index in flipped_index): #Make sure that the same bit isnt flipped multiple times
+                    bit_index = random.randint(0, PACKET_BITS - 1)
+                flipped_index.append(bit_index)
+
+                packet ^= (1 << bit_index)
+
         else:
             f2.write("0\n")
 
-        f.write("".join(f"{b:02X}" for b in packet) + "\n")
+        f.write(f"{packet:0{(PAYLOAD_SIZE+2)*2}X}\n")
 
 

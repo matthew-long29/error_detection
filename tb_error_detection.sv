@@ -22,7 +22,7 @@
 
 module tb_error_detection;
 
-
+    parameter num_packets = 100000;
     logic CLK_DATA; //10MHz
     logic reset;
     logic data_in;
@@ -36,8 +36,8 @@ module tb_error_detection;
     
     
     
-    logic [95:0] packets [0:9999];
-    logic expected_error [0:9999];
+    logic [95:0] packets [0:num_packets - 1];
+    logic expected_error [0:num_packets - 1];
     logic expected_current;
     initial begin
         $readmemh("packets.data", packets);
@@ -49,13 +49,12 @@ module tb_error_detection;
         data_valid = 0;
         
 
-        @(posedge CLK_DATA);
+        repeat(4) @(posedge CLK_DATA);
         
         reset <= 0;
         
-        for (int pkt = 0; pkt < 10000; pkt++) begin
+        for (int pkt = 0; pkt < num_packets; pkt++) begin
 
-            
 
             for (int i = 95; i >= 0; i--) begin
                 @(posedge CLK_DATA);
@@ -74,6 +73,7 @@ module tb_error_detection;
     //SVA Check
   
     integer pass_count = 0;
+    integer total_incorrect = 0;
     integer false_error = 0;
     integer missed_error = 0;
    
@@ -87,6 +87,7 @@ module tb_error_detection;
     begin
         pass_count++; 
     end else begin
+        total_incorrect++;
         if (expected_current == 0 && error == 1)
             false_error++;
         else if (expected_current == 1 && error == 0)
@@ -97,6 +98,7 @@ module tb_error_detection;
     
     final begin
         $display("Packets Correct : %0d", pass_count);
+        $display("Total incorrect : %0d", false_error);
         $display("False Detect : %0d", false_error);
         $display("Missed error: %0d", missed_error);
     end
