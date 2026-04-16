@@ -20,13 +20,14 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module error_rx #(parameter[15:0] crc_polynomial,
-    parameter[15:0] init
+module error_rx #(parameter[15:0] crc_polynomial = 16'h1021, //commonly used polynomial for wireless coms
+    parameter[15:0] init = 16'hFFFF,                         // set initialy crc value
+    parameter[7:0] packet_length = 96                        //bits in a packet (12 bytes = 12 * 8 = 96 bits)
     )(
     input clk_data, //1kHz clock input
     input reset,    //reset active high
     input data_in,  //Serial data input
-    input data_valid, //One clock cycle pulse, asserted to indicate the start of data transmission
+    input enable, //Continuous signal asserted when data is actively being sent
     output logic packet_done, //Output to show end of packet
     output logic error        //High output indicates an error in the packet
     );
@@ -34,24 +35,23 @@ module error_rx #(parameter[15:0] crc_polynomial,
     //Bit tracking
     logic [6:0] bit_counter;
 
-    //Crc data
+    //CRC data, used to transfer between sequential and combinational block
     logic [15:0] crc_comb;
     logic [15:0] crc_reg;
     
      
-     
-    //Sequential data
+    //Sequential block, update registers
     always_ff @(posedge clk_data) begin
         if (reset) begin
             bit_counter <= 7'd0;
             crc_reg <= init;
         end else begin
 
-            if (data_valid) begin
+            if (enable) begin
                 crc_reg <= crc_comb;
                 bit_counter <= bit_counter + 1; 
                 
-                if (bit_counter == 7'd63) begin
+                if (bit_counter == packet_length - 1) begin
                     bit_counter <= 7'd0;
                     crc_reg <= init;
                 end
@@ -60,14 +60,14 @@ module error_rx #(parameter[15:0] crc_polynomial,
         end
     end
     
-    //Contains combinational logic
+    //Combinational logic
     always_comb begin
         //default values
         packet_done = 0;
         error = 0;
         crc_comb = crc_reg;
         
-        if (!reset) begin
+        if (enable) begin
                 //CRC Calculation algorithm
                 if (crc_reg[15] ^ data_in) begin
                     crc_comb = {crc_reg[14:0], 1'b0} ^ crc_polynomial;
@@ -75,11 +75,12 @@ module error_rx #(parameter[15:0] crc_polynomial,
                     crc_comb = {crc_reg[14:0], 1'b0};
                 end
                     
-                if (bit_counter == 7'd63) begin
+                if (bit_counter == packet_length - 1) begin
                     packet_done = 1;
                     error = (crc_comb != 16'h0000);
                 end
         end
+        
     end
     
     
