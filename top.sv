@@ -21,26 +21,36 @@
 
 
 module top(
-    //input clk,
-    input sys_clk_p, //Target FPGA has 200MHz clock
-    input sys_clk_n,
-    input reset,
+    input sys_clkp, //Target FPGA has 200MHz clock
+    input sys_clkn,
+    output logic clk_out,
     output logic data_out,
     output logic error,
-    output logic packet_done
+    output logic packet_done,
+    output logic exp
     );
-    wire data_valid;
+    wire data_valid;   
+    wire sys_clk; 
+    IBUFGDS osc_clk(.O(sys_clk), .I(sys_clkp), .IB(sys_clkn));
     
-    wire clk, locked;
     
-    clk_wiz_0 pll_inst (
-    .clk_out1(clk),
-    .reset(reset),
-    .locked(locked),
-    .clk_in1_p(sys_clk_p),
-    .clk_in1_n(sys_clk_n)
-    );
-    send_data data_tx (clk, reset, data_out, data_valid);
-    error_rx dut (clk, reset, data_out, data_valid, packet_done, error);
+    logic [15:0] reset_cnt = 0;
+    logic reset = 1;    
+    always @(posedge sys_clk) begin
+        if (reset_cnt != 16'hFFFF) begin
+            reset_cnt <= reset_cnt + 1;
+            reset <= 1;
+        end else begin
+            reset <= 0;
+        end        
+    end
     
+    
+    
+    
+    send_data data_tx (sys_clk, reset, data_out, data_valid);
+    error_rx dut (sys_clk, reset, data_out, data_valid, packet_done, error);
+    assign clk_out = sys_clk;
+    
+
 endmodule
