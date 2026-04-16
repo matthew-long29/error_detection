@@ -1,20 +1,27 @@
-#Clock (differential pair)
-set_property PACKAGE_PIN V4 [get_ports sys_clk_p]
-set_property PACKAGE_PIN W4 [get_ports sys_clk_n]
-set_property IOSTANDARD LVDS_25 [get_ports {sys_clk_p sys_clk_n}]
-set_property DIFF_TERM TRUE [get_ports {sys_clk_p sys_clk_n}]
+set_property IOSTANDARD LVDS_25 [get_ports {sys_clkp}]
+set_property PACKAGE_PIN W11 [get_ports {sys_clkp}]
 
-# Reset
-set_property PACKAGE_PIN P6 [get_ports reset]
-set_property IOSTANDARD LVCMOS33 [get_ports reset]
+set_property IOSTANDARD LVDS_25 [get_ports {sys_clkn}]
+set_property PACKAGE_PIN W12 [get_ports {sys_clkn}]
 
-# Outputs
-set_property PACKAGE_PIN N4 [get_ports data_out]
-set_property IOSTANDARD LVCMOS33 [get_ports data_out]
+set_property DIFF_TERM FALSE [get_ports {sys_clkp}]
 
-set_property PACKAGE_PIN P2 [get_ports error]
-set_property IOSTANDARD LVCMOS33 [get_ports error]
+create_clock -name sys_clk -period 5 [get_ports sys_clkp]
 
-set_property PACKAGE_PIN L5 [get_ports packet_done]
-set_property IOSTANDARD LVCMOS33 [get_ports packet_done]
+
+#PIN to oscilliscope
+set_property PACKAGE_PIN R6 [get_ports {clk_out}]
+set_property IOSTANDARD LVCMOS33 [get_ports {clk_out}]
+
+set_property PACKAGE_PIN R3 [get_ports {data_out}]
+set_property IOSTANDARD LVCMOS33 [get_ports {data_out}]
+
+set_property PACKAGE_PIN U6 [get_ports {packet_done}]
+set_property IOSTANDARD LVCMOS33 [get_ports {packet_done}]
+
+set_property PACKAGE_PIN U2 [get_ports {error}]
+set_property IOSTANDARD LVCMOS33 [get_ports {error}]
+
+set_property PACKAGE_PIN W15 [get_ports {exp}]
+set_property IOSTANDARD LVCMOS33 [get_ports {exp}]
 
