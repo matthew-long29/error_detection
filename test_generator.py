@@ -1,19 +1,19 @@
 import random
 import crcmod
 
-NUM_PACKETS = 100000
+NUM_PACKETS = 1000
 PAYLOAD_SIZE = 10
 PACKET_BITS = (PAYLOAD_SIZE + 2) * 8
 
 ERROR_RATE = 0.1 #Actually 1e-3, add higher rate to test more errors 
-NUM_ERRORS = 3 #Vary the max number of errors per packet
+NUM_ERRORS = 4 #Vary the max number of errors per packet
 
 POLYNOMIAL = 0x11021 #CRCmod requires explicity x^16 term, which is why polynomial is 0x11021 instead of 0x1021
-INIT = 0x0000
+INIT = 0xFFFF
 
 crc16 = crcmod.mkCrcFun(POLYNOMIAL, rev=False, initCrc=INIT, xorOut=0x0000)
 
-with open("packets.data", "w") as f, open("expected_results.data", "w") as f2:
+with open("packets.mem", "w") as f, open("expected_results.mem", "w") as f2:
 
     for _ in range(NUM_PACKETS):
 
@@ -40,6 +40,13 @@ with open("packets.data", "w") as f, open("expected_results.data", "w") as f2:
         else:
             f2.write("0\n")
 
+        packet_bytes = packet.to_bytes(PAYLOAD_SIZE + 2, 'big')
+        
+        #Decomment to write one byte per line for fpga testing
+        #for b in packet_bytes:
+        #    f.write(f"{b:02X}\n")
+        
+        #writing one packet per line for the sim testbench
         f.write(f"{packet:0{(PAYLOAD_SIZE+2)*2}X}\n")
 
 
